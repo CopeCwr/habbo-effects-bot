@@ -324,9 +324,8 @@ def _pick_direction(fx: Effect) -> int | None:
 def build_preview(fx: Effect) -> list[tuple[str, bytes]]:
     """Animación completa con FONDO TRANSPARENTE, componiendo las capas según la línea de tiempo.
 
-    Devuelve dos archivos:
-      * GIF: transparencia de 1 bit (limitación del formato; los bordes suaves se recortan).
-      * WebP animado: transparencia completa, conserva los degradados del brillo.
+    Devuelve un WebP animado sin pérdida, con transparencia completa
+    (conserva los degradados suaves del brillo).
     Las capas con tinta aditiva no tienen alfa propio (el negro "desaparece" al sumarse),
     así que su brillo se convierte en opacidad.
     """
@@ -388,26 +387,7 @@ def build_preview(fx: Effect) -> list[tuple[str, bytes]]:
 
     files: list[tuple[str, bytes]] = []
 
-    # 3a) GIF con transparencia de 1 bit y paleta global (evita parpadeos de color)
-    scaled = [np.asarray(upscale(f)) for f in rgba_frames]
-    opaque = np.concatenate([f[f[..., 3] >= 128][:, :3] for f in scaled])
-    gif_frames = []
-    if len(opaque):
-        pal = Image.fromarray(opaque.reshape(1, -1, 3), "RGB").quantize(colors=255, method=Image.MEDIANCUT, dither=Image.NONE)
-        palette = pal.getpalette()[:765]
-        palette += [0] * (768 - len(palette))
-        for f in scaled:
-            idx = np.array(Image.fromarray(f[..., :3], "RGB").quantize(palette=pal, dither=Image.NONE))
-            idx[f[..., 3] < 128] = 255  # índice reservado para transparente
-            p = Image.fromarray(idx, "P")
-            p.putpalette(palette)
-            gif_frames.append(p)
-        buf = io.BytesIO()
-        gif_frames[0].save(buf, "GIF", save_all=True, append_images=gif_frames[1:], duration=durations,
-                           loop=0, transparency=255, disposal=2, optimize=False)
-        files.append((f"{fx.lib}_animacion.gif", buf.getvalue()))
-
-    # 3b) WebP animado sin pérdida y con transparencia completa
+    # 3) WebP animado sin pérdida y con transparencia completa
     frames = [upscale(f) for f in rgba_frames]
     buf = io.BytesIO()
     frames[0].save(buf, "WEBP", save_all=True, append_images=frames[1:], duration=durations,
