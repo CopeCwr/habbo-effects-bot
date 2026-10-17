@@ -156,7 +156,7 @@ def split_batches(files: list[tuple[str, bytes]]) -> tuple[list[list[tuple[str, 
 
 
 async def announce_effect(session, lib: str, swf: bytes | None) -> None:
-    content = f"👉 Se ha encontrado el siguiente efecto 👈\n**{lib}**"
+    content = f"🔴 Se ha encontrado el siguiente efecto\n**{lib}**"
     files: list[tuple[str, bytes]] = []
 
     if swf is None:
