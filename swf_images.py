@@ -326,7 +326,7 @@ def build_preview(fx: Effect) -> list[tuple[str, bytes]]:
 
     Devuelve dos archivos:
       * GIF: transparencia de 1 bit (limitación del formato; los bordes suaves se recortan).
-      * APNG (.png animado): transparencia completa, conserva los degradados del brillo.
+      * WebP animado: transparencia completa, conserva los degradados del brillo.
     Las capas con tinta aditiva no tienen alfa propio (el negro "desaparece" al sumarse),
     así que su brillo se convierte en opacidad.
     """
@@ -407,11 +407,12 @@ def build_preview(fx: Effect) -> list[tuple[str, bytes]]:
                            loop=0, transparency=255, disposal=2, optimize=False)
         files.append((f"{fx.lib}_animacion.gif", buf.getvalue()))
 
-    # 3b) APNG con transparencia completa
-    pngs = [upscale(f) for f in rgba_frames]
+    # 3b) WebP animado sin pérdida y con transparencia completa
+    frames = [upscale(f) for f in rgba_frames]
     buf = io.BytesIO()
-    pngs[0].save(buf, "PNG", save_all=True, append_images=pngs[1:], duration=durations, loop=0, disposal=1)
-    files.append((f"{fx.lib}_animacion_transparente.png", buf.getvalue()))
+    frames[0].save(buf, "WEBP", save_all=True, append_images=frames[1:], duration=durations,
+                   loop=0, lossless=True, background=(0, 0, 0, 0))
+    files.append((f"{fx.lib}_animacion_transparente.webp", buf.getvalue()))
     return files
 
 
