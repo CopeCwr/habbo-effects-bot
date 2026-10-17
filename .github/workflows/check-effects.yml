@@ -3,7 +3,20 @@ name: Habbo effects check
 on:
   schedule:
     - cron: "*/5 * * * *"   # GitHub puede retrasarlo varios minutos
-  workflow_dispatch:         # botón "Run workflow" para probar a mano
+  workflow_dispatch:         # botón "Run workflow" para ejecutarlo a mano
+    inputs:
+      enviar_prueba:
+        description: "Enviar un efecto de PRUEBA a Discord (no consulta Habbo)"
+        type: boolean
+        default: false
+      efecto_prueba:
+        description: "Efecto de ejemplo para la prueba"
+        type: choice
+        options:
+          - Mystic
+          - LeavesBlown
+          - Spin
+        default: Mystic
 
 concurrency:
   group: habbo-effects
@@ -26,13 +39,21 @@ jobs:
 
       - run: pip install -r requirements.txt
 
+      - name: Enviar efecto de PRUEBA a Discord
+        if: ${{ inputs.enviar_prueba }}
+        run: python monitor.py --test-swf "pruebas/${EFECTO}.swf"
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          EFECTO: ${{ inputs.efecto_prueba }}
+
       - name: Buscar efectos nuevos
+        if: ${{ !inputs.enviar_prueba }}
         run: python monitor.py
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
 
       - name: Guardar estado
-        if: always()
+        if: ${{ always() && !inputs.enviar_prueba }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
