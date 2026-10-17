@@ -1,0 +1,46 @@
+name: Habbo effects check
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"   # GitHub puede retrasarlo varios minutos
+  workflow_dispatch:         # botón "Run workflow" para probar a mano
+
+concurrency:
+  group: habbo-effects
+  cancel-in-progress: false
+
+permissions:
+  contents: write            # necesario para guardar state.json
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Buscar efectos nuevos
+        run: python monitor.py
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+      - name: Guardar estado
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state.json downloads 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "Sin cambios"
+          else
+            git commit -m "Actualizar estado"
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            git push
+          fi
